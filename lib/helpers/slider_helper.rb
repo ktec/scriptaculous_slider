@@ -46,10 +46,10 @@ module ActionView
         
         options[:range] = "$R(#{options[:range].min},#{options[:range].max})" if options[:range]
         
-        handle = options[:handles] || "$('#{element_id}').firstChild"
+        handles = options[:handles] || "$('#{element_id}').firstChild"
         options.delete :handles
                 
-        javascript_tag("#{prepare}new Control.Slider(#{handle},'#{element_id}', #{options_for_javascript(options)})")
+        javascript_tag("#{prepare}new Control.Slider(#{handles},'#{element_id}', #{options_for_javascript(options)})")
       end
       
       # Creates a simple slider control and associates it with a hidden text field
@@ -58,9 +58,15 @@ module ActionView
           :change => "$('#{object}_#{method}').value = value",
           :slider_value  => instance_variable_get("@#{object}").send(method)
         })
-        hidden_field(object, method) <<        
-        content_tag('div',content_tag('div', ''), 
-          :class => 'slider', :id => "#{object}_#{method}_slider") << 
+				# TODO: This needs to create an empty div for each handle,
+				# and if there are two, it might need a span div too
+				#options[:handles].each {|h| content_tag('div', '', :id => '#{h}') },
+        hidden_field(object, method) <<
+        content_tag('div', [
+						content_tag('div', '', :class => 'handle min', :id => 'min_limit'),
+						content_tag('div', '', :class => 'handle max', :id => 'max_limit'),
+						content_tag('div', '', :id => 'min_max_span')
+					], :class => 'slider', :id => "#{object}_#{method}_slider") << 
         slider_element("#{object}_#{method}_slider", options)
       end
       
@@ -73,14 +79,6 @@ module ActionView
             margin-bottom:5px;
             background: #ddd;
             position: relative;
-          }
-          div.slider div {
-            position:absolute;
-            width:8px;
-            height:15px;
-            margin-top:-5px;
-            background: #999;
-            border:1px outset white;
           }
         EOT
         )
@@ -102,7 +100,7 @@ module ActionView
         
         def array_or_numeric_for_javascript(option)
           js_option = if option.kind_of?(Array)
-            "[#{option.join('\',\'')}]"
+            "[#{option.join(',')}]"
           elsif !option.nil?
             "#{option}"
           end
